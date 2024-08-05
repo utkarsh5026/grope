@@ -9,6 +9,7 @@ type Literal byte
 
 const (
 	StartsWith   = '^'
+	EndsWith     = '$'
 	Backslash    = '\\'
 	Digit        = 'd'
 	AlphaNumeric = 'w'
@@ -40,12 +41,16 @@ func matchStart(line []byte, pattern string) bool {
 	patIdx := 0  // pattern index
 
 	for patIdx < len(pattern) {
+
 		if lineIdx >= len(line) {
-			return false
+			return patIdx == len(pattern) || (patIdx == len(pattern)-1 && pattern[patIdx] == EndsWith)
 		}
 
 		switch {
 		case pattern[patIdx] == Backslash:
+			if patIdx+1 >= len(pattern) {
+				return false
+			}
 			match := matchEscapeSequence(line[lineIdx], pattern[patIdx+1])
 			if !match {
 				return false
