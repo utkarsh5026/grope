@@ -20,8 +20,19 @@ const (
 	ZeroOrOne    = '?'
 	ZeroOrMore   = '*'
 	AnyCharacter = '.'
+	OrCharacter  = '|'
+	LeftParen    = '('
+	RightParen   = ')'
 )
 
+// Match checks if a given line matches a pattern.
+//
+// Parameters:
+// - line: The byte slice representing the line to be checked.
+// - pattern: The pattern string to be matched.
+//
+// Returns:
+// - bool: True if the line matches the pattern, false otherwise.
 func Match(line []byte, pattern string) bool {
 	if len(pattern) == 0 {
 		return true
@@ -40,6 +51,14 @@ func Match(line []byte, pattern string) bool {
 	return false
 }
 
+// matchStart checks if a given line matches a pattern from the start.
+//
+// Parameters:
+// - line: The byte slice representing the line to be checked.
+// - pattern: The pattern string to be matched.
+//
+// Returns:
+// - bool: True if the line matches the pattern from the start, false otherwise.
 func matchStart(line []byte, pattern string) bool {
 	lineIdx := 0 // line index
 	patIdx := 0  // pattern index
@@ -77,6 +96,20 @@ func matchStart(line []byte, pattern string) bool {
 			}
 			lineIdx++
 			patIdx += endIdx + 1
+
+		case pattern[patIdx] == LeftParen:
+			endIdx := strings.IndexByte(pattern[patIdx:], RightParen)
+			subPattern := pattern[patIdx+1 : patIdx+endIdx]
+
+			if strings.Contains(subPattern, string(OrCharacter)) {
+				alternatives := strings.Split(subPattern, string(OrCharacter))
+				for _, alt := range alternatives {
+					if matchStart(line[lineIdx:], alt) {
+						return true
+					}
+				}
+				return false
+			}
 
 		case patIdx+1 < len(pattern) && isQuantifier(pattern[patIdx+1]):
 			quantifier := pattern[patIdx+1]
@@ -152,18 +185,29 @@ func matchRepetition(line []byte, char byte) int {
 	return count
 }
 
+// isQuantifier checks if a given character is a quantifier.
+//
+// Parameters:
+// - char: The character to be checked.
+//
+// Returns:
+// - bool: True if the character is a quantifier (one of '+', '?', or '*'), false otherwise.
 func isQuantifier(char byte) bool {
 	return char == OneOrMore || char == ZeroOrOne || char == ZeroOrMore
 }
 
+// handleQuantifier processes a quantifier for a given character in a line.
+//
+// Parameters:
+// - line: The byte slice representing the line to be checked.
+// - char: The character to be matched.
+// - quantifier: The quantifier character ('*', '+', or '?').
+//
+// Returns:
+// - int: The count of consecutive occurrences of the character in the line.
+// - bool: True if the quantifier condition is satisfied, false otherwise.
 func handleQuantifier(line []byte, char byte, quantifier byte) (int, bool) {
-	count := 0
-	for _, c := range line {
-		if c != char {
-			break
-		}
-		count++
-	}
+	count := matchRepetition(line, char)
 
 	switch quantifier {
 	case ZeroOrMore:
