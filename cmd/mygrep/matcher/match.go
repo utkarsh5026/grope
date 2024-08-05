@@ -17,6 +17,8 @@ const (
 	RightBracket = ']'
 	NotInClass   = '^'
 	OneOrMore    = '+'
+	ZeroOrOne    = '?'
+	ZeroOrMore   = '*'
 	AnyCharacter = '.'
 )
 
@@ -76,12 +78,12 @@ func matchStart(line []byte, pattern string) bool {
 			lineIdx++
 			patIdx += endIdx + 1
 
-		case patIdx+1 < len(pattern) && pattern[patIdx+1] == OneOrMore:
-			count := matchRepetition(line[lineIdx:], pattern[patIdx])
-			if count == 0 {
+		case patIdx+1 < len(pattern) && isQuantifier(pattern[patIdx+1]):
+			quantifier := pattern[patIdx+1]
+			count, ok := handleQuantifier(line[lineIdx:], pattern[patIdx], quantifier)
+			if !ok {
 				return false
 			}
-
 			lineIdx += count
 			patIdx += 2
 
@@ -131,6 +133,14 @@ func matchCharacterClass(char byte, class string) bool {
 	return strings.ContainsRune(class, rune(char))
 }
 
+// matchRepetition counts the number of consecutive occurrences of a character in a line.
+//
+// Parameters:
+// - line: The byte slice representing the line to be checked.
+// - char: The character to be matched.
+//
+// Returns:
+// - int: The count of consecutive occurrences of the character at the start of the line.
 func matchRepetition(line []byte, char byte) int {
 	count := 0
 	for _, c := range line {
@@ -140,4 +150,32 @@ func matchRepetition(line []byte, char byte) int {
 		count++
 	}
 	return count
+}
+
+func isQuantifier(char byte) bool {
+	return char == OneOrMore || char == ZeroOrOne || char == ZeroOrMore
+}
+
+func handleQuantifier(line []byte, char byte, quantifier byte) (int, bool) {
+	count := 0
+	for _, c := range line {
+		if c != char {
+			break
+		}
+		count++
+	}
+
+	switch quantifier {
+	case ZeroOrMore:
+		return count, true
+	case OneOrMore:
+		return count, count > 0
+	case ZeroOrOne:
+		if count > 1 {
+			count = 1
+		}
+		return count, true
+	default:
+		return 0, false
+	}
 }
