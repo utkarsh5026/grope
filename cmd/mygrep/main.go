@@ -58,7 +58,13 @@ func ContainsPattern(line []byte, pattern string) bool {
 	}
 
 	if strings.HasPrefix(pattern, "[") {
+
 		positiveChars := strings.TrimSuffix(strings.TrimPrefix(pattern, "["), "]")
+
+		if strings.HasPrefix(positiveChars, "^") {
+			negativeChars := strings.TrimPrefix(positiveChars, "^")
+			return !bytes.ContainsAny(line, negativeChars)
+		}
 		return bytes.ContainsAny(line, positiveChars)
 	}
 	return bytes.ContainsAny(line, pattern)
