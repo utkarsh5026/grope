@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"strings"
+
 	// Uncomment this to pass the first stage
 	// "bytes"
 	"fmt"
@@ -53,6 +55,11 @@ func ContainsPattern(line []byte, pattern string) bool {
 
 	if pattern == "\\w" {
 		return bytes.ContainsAny(line, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
+	}
+
+	if strings.HasPrefix(pattern, "[") {
+		positiveChars := strings.TrimSuffix(strings.TrimPrefix(pattern, "["), "]")
+		return bytes.ContainsAny(line, positiveChars)
 	}
 	return bytes.ContainsAny(line, pattern)
 }
