@@ -51,5 +51,8 @@ func ContainsPattern(line []byte, pattern string) bool {
 		return bytes.ContainsAny(line, "0123456789")
 	}
 
+	if pattern == "\\w" {
+		return bytes.ContainsAny(line, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
+	}
 	return bytes.ContainsAny(line, pattern)
 }
