@@ -16,6 +16,8 @@ const (
 	LeftBracket  = '['
 	RightBracket = ']'
 	NotInClass   = '^'
+	OneOrMore    = '+'
+	AnyCharacter = '.'
 )
 
 func Match(line []byte, pattern string) bool {
@@ -74,7 +76,16 @@ func matchStart(line []byte, pattern string) bool {
 			lineIdx++
 			patIdx += endIdx + 1
 
-		case pattern[patIdx] == line[lineIdx]:
+		case patIdx+1 < len(pattern) && pattern[patIdx+1] == OneOrMore:
+			count := matchRepetition(line[lineIdx:], pattern[patIdx])
+			if count == 0 {
+				return false
+			}
+
+			lineIdx += count
+			patIdx += 2
+
+		case pattern[patIdx] == line[lineIdx] || pattern[patIdx] == AnyCharacter:
 			lineIdx++
 			patIdx++
 
@@ -118,4 +129,15 @@ func matchCharacterClass(char byte, class string) bool {
 		return !strings.ContainsRune(class[1:], rune(char))
 	}
 	return strings.ContainsRune(class, rune(char))
+}
+
+func matchRepetition(line []byte, char byte) int {
+	count := 0
+	for _, c := range line {
+		if c != char {
+			break
+		}
+		count++
+	}
+	return count
 }
