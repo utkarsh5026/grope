@@ -1,11 +1,8 @@
 package main
 
 import (
-	"strings"
-
-	// Uncomment this to pass the first stage
-	// "bytes"
 	"fmt"
+	"github.com/codecrafters-io/grep-starter-go/cmd/mygrep/matcher"
 	"io"
 	"os"
 	"unicode/utf8"
@@ -17,7 +14,7 @@ func matchLine(line []byte, pattern string) (bool, error) {
 	}
 
 	var ok bool
-	ok = ContainsPattern(line, pattern)
+	ok = matcher.Match(line, pattern)
 	return ok, nil
 }
 
@@ -45,76 +42,4 @@ func main() {
 	if !ok {
 		os.Exit(1)
 	}
-}
-
-func contains(start int, target string, pattern string) bool {
-	ti := start // target index
-	i := 0      // pattern index
-	for i < len(pattern) {
-		if ti >= len(target) {
-			return false
-		}
-
-		if pattern[i] == target[ti] {
-			ti++
-			i++
-			continue
-		}
-
-		curr := pattern[i]
-		if curr == '\\' && i < len(pattern)-1 {
-			next := pattern[i+1]
-			if next == 'd' && !isDigit(target[ti]) {
-				return false
-			}
-
-			if next == 'w' && !isAlphaNumeric(target[ti]) {
-				return false
-			}
-
-			ti++
-			i += 2
-		} else if curr == '[' {
-			end := strings.Index(pattern[i:], "]")
-			if end == -1 {
-				return false
-			}
-
-			chars := pattern[i+1 : i+end]
-			if strings.HasPrefix(chars, "^") {
-				if strings.ContainsRune(chars[1:], rune(target[ti])) {
-					return false
-				}
-			} else if !strings.ContainsRune(chars, rune(target[ti])) {
-				return false
-			}
-			ti++
-			i += end + 1
-		} else {
-			return false
-		}
-	}
-
-	return true
-}
-
-func isDigit(c byte) bool {
-	return c >= '0' && c <= '9'
-}
-
-func isLetter(c byte) bool {
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
-}
-
-func isAlphaNumeric(c byte) bool {
-	return isDigit(c) || isLetter(c) || c == '_'
-}
-
-func ContainsPattern(line []byte, pattern string) bool {
-	for i := 0; i < len(line); i++ {
-		if contains(i, string(line), pattern) {
-			return true
-		}
-	}
-	return false
 }
