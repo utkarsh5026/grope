@@ -20,6 +20,10 @@ var filesCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "Search for files in a directory",
 	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 {
+			logs.Fatal("No pattern provided to search for do something like 'gep ls -p . -r \"*.go\"'")
+		}
+
 		if searchPath == "" {
 			searchPath = CurrentDir
 		}
