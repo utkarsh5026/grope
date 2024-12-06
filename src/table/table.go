@@ -2,11 +2,12 @@ package table
 
 import (
 	"fmt"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"os"
 	"reflect"
 	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/olekukonko/tablewriter"
 )
@@ -56,7 +57,6 @@ func configureTable(table *tablewriter.Table, options *Options) {
 		table.SetAlignment(tablewriter.ALIGN_CENTER)
 		table.SetHeaderAlignment(tablewriter.ALIGN_CENTER)
 	}
-
 }
 
 // parseData converts the input data into a table-friendly format.
@@ -109,7 +109,7 @@ func parseStructSlice(structs reflect.Value, headers []string) Data {
 
 		for j := 0; j < fieldCnt; j++ {
 			field := item.Field(j)
-			row = append(row, toString(field.Interface()))
+			row[j] = toString(field.Interface())
 		}
 		rows = append(rows, row)
 	}
