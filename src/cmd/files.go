@@ -14,6 +14,7 @@ const (
 var (
 	searchPath string
 	recursive  bool
+	depth      int
 )
 
 var filesCmd = &cobra.Command{
@@ -33,7 +34,7 @@ var filesCmd = &cobra.Command{
 		var files []file.File
 		var err error
 		if recursive {
-			files, err = file.SearchDirRecursively(searchPath, pattern)
+			files, err = file.SearchDirRecursively(searchPath, pattern, depth)
 		} else {
 			files, err = file.SearchFilesInDir(searchPath, pattern)
 		}
@@ -42,10 +43,15 @@ var filesCmd = &cobra.Command{
 			logs.Fatal(err.Error())
 		}
 
-		table.PrintTable(files, table.Options{
+		files = file.SortByDepth(files)
+		err = table.PrintTable(files, table.Options{
 			Centered: true,
 			Border:   true,
 		})
+
+		if err != nil {
+			logs.Fatal(err.Error())
+		}
 	},
 }
 
@@ -53,4 +59,5 @@ func init() {
 	rootCmd.AddCommand(filesCmd)
 	filesCmd.Flags().StringVarP(&searchPath, "path", "p", ".", "The path to search for files")
 	filesCmd.Flags().BoolVarP(&recursive, "recursive", "r", false, "Search recursively")
+	filesCmd.Flags().IntVarP(&depth, "depth", "d", 0, "Search recursively up to a certain depth (0 means unlimited)")
 }

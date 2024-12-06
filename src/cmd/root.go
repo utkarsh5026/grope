@@ -1,8 +1,8 @@
 package cmd
 
 import (
+	"github.com/codecrafters-io/grep-starter-go/src/logs"
 	"github.com/spf13/cobra"
-	"log"
 )
 
 var rootCmd = cobra.Command{
@@ -13,6 +13,6 @@ var rootCmd = cobra.Command{
 
 func StartCommand() {
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatalf("Error executing  command: %v", err)
+		logs.Fatal(err.Error())
 	}
 }
