@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/codecrafters-io/grep-starter-go/cmd/mygrep/matcher"
+	"github.com/codecrafters-io/grep-starter-go/src/matcher"
 	"io"
 	"os"
 	"unicode/utf8"
