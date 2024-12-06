@@ -51,7 +51,9 @@ func PrintTable(data any, opts Options) error {
 // It sets up borders, column separators, text alignment, and header colors based on the options.
 func configureTable(table *tablewriter.Table, options *Options) {
 	table.SetBorder(options.Border)
-	table.SetColumnSeparator(" ")
+	table.SetColumnSeparator("|")
+	table.SetCenterSeparator("+")
+	table.SetRowSeparator("-")
 
 	if options.Centered {
 		table.SetAlignment(tablewriter.ALIGN_CENTER)
