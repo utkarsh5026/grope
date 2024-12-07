@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/codecrafters-io/grep-starter-go/src/matcher"
 )
@@ -17,10 +18,27 @@ type File struct {
 	ModTime string
 	Perms   string
 	Path    string
+	AbsPath string
 }
 
-// fileFromInfo creates a File struct from fs.FileInfo
-func fileFromInfo(basePath, currentFilePath string, info fs.FileInfo) File {
+type SearchOptions struct {
+	Recursive  bool
+	Invert     bool
+	MaxDepth   int
+	FileFilter SearchWithFileProperty
+}
+
+type SearchWithFileProperty struct {
+	CaseSensitive  bool
+	Hidden         bool
+	MaxSize        int64
+	MinSize        int64
+	ModifiedAfter  time.Time
+	ModifiedBefore time.Time
+}
+
+// FromInfo creates a File struct from fs.FileInfo
+func FromInfo(basePath, currentFilePath string, info fs.FileInfo) File {
 	relPath, _ := filepath.Rel(basePath, currentFilePath)
 
 	return File{
@@ -32,42 +50,44 @@ func fileFromInfo(basePath, currentFilePath string, info fs.FileInfo) File {
 	}
 }
 
-// SearchFilesInDir searches for files matching the pattern in the given directory path.
-// It returns a slice of matching File structs and any error encountered.
-// This function does not search subdirectories.
-func SearchFilesInDir(searchPath string, pattern string) ([]File, error) {
-	files, err := os.ReadDir(searchPath)
-	absPath, _ := filepath.Abs(searchPath)
-
-	if err != nil {
-		return nil, fmt.Errorf("error reading directory: %v", err)
+// SearchWithPattern searches for files matching the pattern in the given directory path
+// and returns a slice of matching File structs.
+func SearchWithPattern(searchPath, pattern string, options SearchOptions) ([]File, error) {
+	if !options.Recursive {
+		options.MaxDepth = 1
 	}
-
-	var foundFiles []File
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-
-		if !matcher.Match([]byte(file.Name()), pattern) {
-			continue
-		}
-
-		info, err := file.Info()
-		if err != nil {
-			return nil, fmt.Errorf("error getting file info: %v", err)
-		}
-
-		foundFiles = append(foundFiles, fileFromInfo(absPath, filepath.Join(absPath, file.Name()), info))
-	}
-
-	return foundFiles, nil
+	return searchFiles(searchPath, pattern, options)
 }
 
-// SearchDirRecursively searches for files matching the pattern in the given directory path
-// and all its subdirectories recursively. It returns a slice of matching File structs
-// and any error encountered.
-func SearchDirRecursively(searchPath, pattern string, maxDepth int) ([]File, error) {
+// SortByDepth sorts the files by their depth in the directory tree.
+// If two files have the same depth, they are sorted by their path.
+func SortByDepth(files []File) []File {
+	sort.Slice(files, func(i, j int) bool {
+		di, _ := calcDepth(files[i].Path)
+		dj, _ := calcDepth(files[j].Path)
+
+		if di == dj {
+			return files[i].Path < files[j].Path
+		}
+
+		return di < dj
+	})
+	return files
+}
+
+// searchFiles searches for files matching the pattern in the given directory path
+// and returns a slice of matching File structs.
+//
+// Parameters:
+//   - searchPath: The directory path to search in
+//   - pattern: The pattern to match files against
+//   - filter: A function that determines whether a file matches the pattern
+//   - options: The search options
+//
+// Returns:
+//   - []File: A slice of matching File structs
+//   - error: An error if something goes wrong
+func searchFiles(searchPath, pattern string, options SearchOptions) ([]File, error) {
 	var foundFiles []File
 	basePath, err := filepath.Abs(searchPath)
 	if err != nil {
@@ -80,7 +100,7 @@ func SearchDirRecursively(searchPath, pattern string, maxDepth int) ([]File, err
 		}
 
 		fullPath := filepath.Join(basePath, path)
-		if !isWithinDepth(basePath, fullPath, maxDepth) {
+		if !isWithinDepth(basePath, fullPath, options.MaxDepth) {
 			return nil
 		}
 
@@ -88,7 +108,7 @@ func SearchDirRecursively(searchPath, pattern string, maxDepth int) ([]File, err
 			return nil
 		}
 
-		if !matcher.Match([]byte(d.Name()), pattern) {
+		if filterFile(d, pattern, options.Invert, options.FileFilter) {
 			return nil
 		}
 
@@ -97,7 +117,7 @@ func SearchDirRecursively(searchPath, pattern string, maxDepth int) ([]File, err
 			return err
 		}
 
-		foundFiles = append(foundFiles, fileFromInfo(basePath, fullPath, info))
+		foundFiles = append(foundFiles, FromInfo(basePath, fullPath, info))
 		return nil
 	})
 
@@ -106,6 +126,45 @@ func SearchDirRecursively(searchPath, pattern string, maxDepth int) ([]File, err
 	}
 
 	return foundFiles, nil
+}
+
+// filterFile filters a file based on the given options and returns true if the file matches the pattern.
+// If invert is true, the function returns true if the file does not match the pattern.
+func filterFile(file os.DirEntry, pattern string, invert bool, options SearchWithFileProperty) bool {
+	info, err := file.Info()
+	if err != nil {
+		return false
+	}
+
+	if options.MaxSize > 0 && info.Size() > options.MaxSize {
+		return false
+	}
+
+	if options.MinSize > 0 && info.Size() < options.MinSize {
+		return false
+	}
+
+	modTime := info.ModTime()
+	if !options.ModifiedBefore.IsZero() && modTime.After(options.ModifiedBefore) {
+		return false
+	}
+
+	if !options.ModifiedAfter.IsZero() && modTime.Before(options.ModifiedAfter) {
+		return false
+	}
+
+	fileName := file.Name()
+	if !options.Hidden && strings.HasPrefix(fileName, ".") {
+		return false
+	}
+
+	if !options.CaseSensitive {
+		pattern = strings.ToLower(pattern)
+		fileName = strings.ToLower(fileName)
+	}
+
+	match := matcher.Match([]byte(fileName), pattern)
+	return invert != match
 }
 
 // formatSize converts a size in bytes to a human-readable string with appropriate units (B, KB, MB, etc)
@@ -150,20 +209,4 @@ func calcDepth(path string) (int, error) {
 		return 0, fmt.Errorf("error getting absolute path: %v", err)
 	}
 	return len(strings.Split(cleaned, string(os.PathSeparator))) - 1, nil
-}
-
-// SortByDepth sorts the files by their depth in the directory tree.
-// If two files have the same depth, they are sorted by their path.
-func SortByDepth(files []File) []File {
-	sort.Slice(files, func(i, j int) bool {
-		di, _ := calcDepth(files[i].Path)
-		dj, _ := calcDepth(files[j].Path)
-
-		if di == dj {
-			return files[i].Path < files[j].Path
-		}
-
-		return di < dj
-	})
-	return files
 }

@@ -34,21 +34,37 @@ const (
 // Returns:
 // - bool: True if the line matches the pattern, false otherwise.
 func Match(line []byte, pattern string) bool {
+	idx := MatchWithIdx(line, pattern)
+	return idx != -1
+}
+
+// MatchWithIdx returns the index of the first character in the line that matches the pattern.
+//
+// Parameters:
+// - line: The byte slice representing the line to be checked.
+// - pattern: The pattern string to be matched.
+//
+// Returns:
+// - int: The index of the first character in the line that matches the pattern, or -1 if no match is found.
+func MatchWithIdx(line []byte, pattern string) int {
 	if len(pattern) == 0 {
-		return true
+		return 0
 	}
 
 	if pattern[0] == StartsWith {
-		return matchStart(line, pattern[1:])
+		if matchStart(line, pattern[1:]) {
+			return 0
+		}
+		return -1
 	}
 
 	for i := range line {
 		if matchStart(line[i:], pattern) {
-			return true
+			return i
 		}
 	}
 
-	return false
+	return -1
 }
 
 // matchStart checks if a given line matches a pattern from the start.
