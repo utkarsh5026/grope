@@ -51,3 +51,15 @@ func GetFileSize(path string) (int64, error) {
 	}
 	return info.Size(), nil
 }
+
+// MakeDirIfNotExists creates a directory if it does not exist.
+// It returns an error if the directory cannot be created.
+func MakeDirIfNotExists(path string) error {
+	if !CheckFileExists(path) {
+		err := os.MkdirAll(path, 0755)
+		if err != nil {
+			return fmt.Errorf("error creating directory: %v", err)
+		}
+	}
+	return nil
+}
